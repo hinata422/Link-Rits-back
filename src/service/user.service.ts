@@ -6,8 +6,8 @@ export class UserService {
   constructor(private readonly userRepo: UserRepositoryImpl) {}
 
   // 初回ログイン判定API
-  async checkUser(sub: string) {
-    const user = await this.userRepo.findBySub(sub);
+  async checkUser(auth0Id: string) {
+    const user = await this.userRepo.findBySub(auth0Id);
     return { exists: !!user };
   }
 
@@ -15,11 +15,11 @@ export class UserService {
     return await this.userRepo.create(data);
   }
 
-  async getUser(sub: string) {
-    return await this.userRepo.findBySub(sub);
+  async getUser(auth0Id: string) {
+    return await this.userRepo.findBySub(auth0Id);
   }
 
-  async updateUser(sub: string, data: any) {
-    return await this.userRepo.update(sub, data);
+  async updateUser(auth0Id: string, data: any) {
+    return await this.userRepo.update(auth0Id, data);
   }
 }

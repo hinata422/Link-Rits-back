@@ -9,7 +9,7 @@ export class UserRepositoryImpl {
     const { data, error } = await this.supabase
       .from('users')
       .select('*')
-      .eq('sub', sub)
+      .eq('auth0Id', sub)
       .single();
 
     if (error) throw error;
@@ -31,7 +31,7 @@ export class UserRepositoryImpl {
     const { data, error } = await this.supabase
       .from('users')
       .update(user)
-      .eq('sub', sub)
+      .eq('auth0Id', sub)
       .select()
       .single();
 
