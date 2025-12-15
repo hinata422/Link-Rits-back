@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { UserRepository } from '../repository/user/user.repo';
-import { UserRepositoryImpl } from '../repository/user/psql/user.repo.impl';
+
 @Injectable()
 export class UserService {
   constructor(private readonly userRepo: UserRepository) {
@@ -8,9 +8,9 @@ export class UserService {
   }
 
   // 初回ログイン判定API
-  async check(auth0Id: string) {
+  async check(auth0Id: string): Promise<boolean> {
     const user = await this.userRepo.findByAuth0Id(auth0Id);
-    return { exists: !!user };
+    return !!user;
   }
 
   async create(data: any) {

@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { supabaseClient } from './main';
 
 import { UserController } from './controller/user.controller';
 import { UserService } from './service/user.service';
@@ -18,6 +20,10 @@ import { EventRepository } from './repository/event/event.repo';
   ],
   controllers: [UserController, EventController],
   providers: [
+    {
+      provide: SupabaseClient,
+      useValue: supabaseClient,
+    },
     {
       provide: EventRepository,
       useClass: EventRepositoryImpl,
