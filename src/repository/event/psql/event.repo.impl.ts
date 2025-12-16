@@ -4,9 +4,10 @@ import { EventRepository } from '../event.repo';
 
 
 @Injectable()
-export class EventRepositoryImpl extends EventRepository {
-  constructor(supabaseClient: SupabaseClient){
-    super(supabaseClient);
+export class EventRepositoryImpl implements EventRepository {
+  private readonly client: SupabaseClient;
+  constructor(supabaseClient: SupabaseClient) {
+    this.client = supabaseClient;
   }
 
   async bulkInsert(events: any[]): Promise<void> {

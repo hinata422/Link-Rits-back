@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { SupabaseClient, User } from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { UserRepository } from '../user.repo';
 
 
 @Injectable()
-export class UserRepositoryImpl extends UserRepository {
-  constructor(supabaseClient: SupabaseClient){
-    super(supabaseClient);
+export class UserRepositoryImpl implements UserRepository {
+  private readonly client: SupabaseClient;
+  constructor(supabaseClient: SupabaseClient) {
+    this.client = supabaseClient;
   }
 
   async findByAuth0Id(id: string) {

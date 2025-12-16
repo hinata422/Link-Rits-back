@@ -1,16 +1,17 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { SupabaseClient } from '@supabase/supabase-js';
-import { supabaseClient } from './main';
-
 import { UserController } from './controller/user.controller';
 import { UserService } from './service/user.service';
+
 import { UserRepositoryImpl } from './repository/user/psql/user.repo.impl';
 import { UserRepository } from './repository/user/user.repo';
 import { EventController } from './controller/event.controller';
 import { EventService } from './service/event.service';
 import { EventRepositoryImpl } from './repository/event/psql/event.repo.impl';
-import { EventRepository } from './repository/event/event.repo';
+import { supabaseClient } from './main';
+import { SupabaseClient } from '@supabase/supabase-js';
+export const EVENT_REPOSITORY = Symbol('EventRepository');
+export const USER_REPOSITORY = Symbol('UserRepository');
 
 @Module({
   imports: [
@@ -25,16 +26,16 @@ import { EventRepository } from './repository/event/event.repo';
       useValue: supabaseClient,
     },
     {
-      provide: EventRepository,
+      provide: EVENT_REPOSITORY,
       useClass: EventRepositoryImpl,
     },
     {
-      provide: UserRepository,
+      provide: USER_REPOSITORY,
       useClass: UserRepositoryImpl,
     },
     UserService,
     EventService,
   ],
-  exports: [EventRepository, UserRepository],
+  exports: [EVENT_REPOSITORY, USER_REPOSITORY],
 })
 export class AppModule {}

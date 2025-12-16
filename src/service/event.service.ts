@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { EventRepository } from '../repository/event/event.repo';
+import type{ EventRepository } from '../repository/event/event.repo';
 
 @Injectable()
 export class EventService {
-  constructor(private readonly eventRepo: EventRepository) {}
+  private readonly eventRepo: EventRepository;
+  constructor(eventRepo: EventRepository) {
+    this.eventRepo = eventRepo;
+  }
 
   async getAll() {
     return await this.eventRepo.findAll();

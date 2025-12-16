@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { UserRepository } from '../repository/user/user.repo';
+import type{ UserRepository } from '../repository/user/user.repo';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly userRepo: UserRepository) {
+  private readonly userRepo: UserRepository;
+  constructor(userRepo: UserRepository) {
     this.userRepo = userRepo;
   }
 
