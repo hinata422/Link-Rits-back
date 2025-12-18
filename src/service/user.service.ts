@@ -1,12 +1,13 @@
-import { Injectable } from '@nestjs/common';
-import type{ UserRepository } from '../repository/user/user.repo';
+import { Inject, Injectable } from '@nestjs/common';
+import type { UserRepository } from '../repository/user/user.repo';
+import { USER_REPOSITORY } from '../tokens';
 
 @Injectable()
 export class UserService {
-  private readonly userRepo: UserRepository;
-  constructor(userRepo: UserRepository) {
-    this.userRepo = userRepo;
-  }
+  constructor(
+    @Inject(USER_REPOSITORY)
+    private readonly userRepo: UserRepository,
+  ) {}
 
   // 初回ログイン判定API
   async check(auth0Id: string): Promise<boolean> {
