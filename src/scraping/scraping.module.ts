@@ -6,6 +6,7 @@ import { EventsModule } from '../events/events.module';
 import { ScrapingController } from './scraping.controller';
 
 @Module({
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   imports: [EventsModule],
   controllers: [ScrapingController],
   providers: [ScrapingService, ScraperFactory, RitsumeikanStrategy],
