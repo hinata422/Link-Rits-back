@@ -4,68 +4,158 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
+// クライアント生成設定
 generator client {
   provider = "prisma-client-js"
 }
 
+// DB接続設定
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // Transaction Mode (Port 6543)
+  directUrl = env("DIRECT_URL")   // Session Mode (Port 5432)
 }
 
-model User {
-  uid          String  @id @default(uuid()) @db.Uuid
-  linkUserCode String  @unique @map("link_user_code") @db.VarChar(255)
-  name         String  @db.VarChar(36) // display_name から name に変更
-  mbtiType     String? @map("mbti_type") @db.VarChar(10) // 任意(NULL)
+// --- Enum定義 ---
 
-  // リレーション（つながり）
-  eventPosts   EventPost[]
+enum MbtiType {
+  ISTJ
+  ISFJ
+  INFJ
+  INTJ
+  ISTP
+  ISFP
+  INFP
+  INTP
+  ESTP
+  ESFP
+  ENFP
+  ENTP
+  ESTJ
+  ESFJ
+  ENFJ
+  ENTJ
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  NO_ANSWER
+}
+
+enum Faculty {
+  BUSINESS // 経営学部
+  POLICY // 政策科学部
+  INFO_SCI // 情報理工学部
+  IMAGE_ARTS // 映像学部
+  PSYCHOLOGY // 総合心理学部
+  GLA // グローバル教養学部
+}
+
+// --- モデル定義 ---
+
+// ユーザー (画像: users)
+model User {
+  id           String    @id @default(uuid()) @map("uid") @db.Char(36) // CHAR(36) PK
+  auth0Id      String    @unique @map("auth0_sub") @db.VarChar(255) // VARCHAR(255) UNIQUE
+  linkUserCode String?   @unique @map("link_user_code") @db.VarChar(255) // 画像4: link_user_code
+  displayName  String    @map("name") @db.VarChar(36) // 画像4: name (VARCHAR 36)
+  email        String    @unique @db.VarChar(258)
+  deviceToken  String?   @map("device_token") @db.Text
+  mbtiType     MbtiType? @map("mbti_type")
+  gender       Gender
+  age          Int
+  faculty      Faculty
+
+  // リレーション
+  eventPosts EventPost[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("users")
 }
 
-// イベント原本
+// スクレイピングしたイベント情報 (画像4: events)
 model Event {
-  id     String @id @default(uuid()) @db.Uuid
-  title  String @db.VarChar(256)
-  place  String @db.VarChar(256)
-  detail String @db.Text
-  // category は削除されました
+  id        String   @id @default(uuid()) @db.Char(36) // CHAR(36) PK
+  title     String   @db.VarChar(256)
+  place     String   @db.VarChar(256)
+  detail    String   @db.Text
+  scrapedAt DateTime @map("scraped_at") @db.Timestamp()
+  startAt   DateTime @map("start_at")
+  endAt     DateTime @map("end_at")
+  dateText  String   @map("date_text") @db.VarChar(255)
 
   // リレーション
-  posts        EventPost[]
-  editedEvents EventEdited[]
+  eventMbtis EventMbti[]
+  eventPosts EventPost[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("events")
 }
 
-// 投稿管理
-model EventPost {
-  id        String   @id @default(uuid()) @db.Uuid
-  uid       String   @db.Uuid
-  eventId   String   @map("event_id") @db.Uuid
-  postTime  DateTime @default(now()) @map("post_time")
-  postLimit DateTime @map("post_limit")
+// イベントのMBTI別解析データ (画像4: events_mbti)
+model EventMbti {
+  id           String   @id @default(uuid()) @db.Char(36) // CHAR(36) PK
+  eventId      String   @map("event_id") @db.Char(36)
+  detailEdited String   @map("detail_edited") @db.Text
+  mbtiType     MbtiType @map("mbti_type") // ENUM
 
-  // リンク設定
-  user      User     @relation(fields: [uid], references: [uid], onDelete: Cascade)
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  // リレーション
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@map("events_mbti")
+}
+
+// ユーザーによるイベント募集投稿 (画像2 & 4: event_posts)
+model EventPost {
+  id         String   @id @default(uuid()) @db.Char(36)
+  userId     String   @map("uid") @db.Char(36)
+  // 画像4に基づき、元のイベントと紐付ける
+  eventId    String   @map("event_id") @db.Char(36)
+
+  // 募集内容 (画像2の要素も保持)
+  title      String   @db.VarChar(256)
+  categoryId String?  @map("category") @db.Char(36) // Image 2
+  postTime   DateTime @default(now()) @map("post_time")
+  postLimit  DateTime @map("post_limit")
+  place      String   @db.VarChar(256) // 集合場所など
+  detail     String   @db.Text
+  chatRoomId String   @map("chat_room_id") @db.Char(36)
+
+  // リレーション
+  user       User             @relation(fields: [userId], references: [id])
+  event      Event            @relation(fields: [eventId], references: [id])
+  categories CategoryOfRoom[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("event_posts")
 }
 
-// MBTI別加工データ
-model EventEdited {
-  id           String @id @default(uuid()) @db.Uuid
-  eventsId     String @map("events_id") @db.Uuid
-  mbtiType     String @map("mbti_type") @db.VarChar(36)
-  detailEdited String @map("detail_edited") @db.Text
+// カテゴリ (画像2: category)
+model Category {
+  id   String @id @default(uuid()) @db.Char(36)
+  name String @unique @db.VarChar(30)
 
-  // リンク設定
-  event        Event  @relation(fields: [eventsId], references: [id], onDelete: Cascade)
+  rooms CategoryOfRoom[]
 
-  // ユニーク制約 (同じイベント×同じMBTIは1つだけ)
-  @@unique([eventsId, mbtiType])
-  @@map("events_edited")
+  @@map("category")
+}
+
+// カテゴリ中間テーブル (画像2: category_of_rooms)
+model CategoryOfRoom {
+  categoryId  String @map("category_id") @db.Char(36)
+  eventPostId String @map("event_posts_id") @db.Char(36)
+
+  category  Category  @relation(fields: [categoryId], references: [id])
+  eventPost EventPost @relation(fields: [eventPostId], references: [id])
+
+  @@id([categoryId, eventPostId])
+  @@map("category_of_rooms")
 }
