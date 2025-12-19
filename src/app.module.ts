@@ -8,6 +8,8 @@ import { EventService } from './service/event.service';
 import { EventRepositoryImpl } from './repository/event/psql/event.repo.impl';
 import { EventEditedService } from './service/event-edited.service';
 import { EventEditedRepositoryImpl } from './repository/event-edited/psql/event-edited.repo.impl';
+import { EventEditedController } from './controller/event-edited.controller';
+import { PlainTextToMbtiLikeConverter } from './service/plain-text-to-mbti-like-converter.service';
 import { supabaseClient } from './main';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { TYPES } from '../common/Types';
@@ -18,7 +20,7 @@ import { TYPES } from '../common/Types';
       isGlobal: true,
     }),
   ],
-  controllers: [UserController, EventController],
+  controllers: [UserController, EventController, EventEditedController],
   providers: [
     {
       provide: SupabaseClient,
@@ -39,6 +41,7 @@ import { TYPES } from '../common/Types';
     UserService,
     EventService,
     EventEditedService,
+    PlainTextToMbtiLikeConverter,
   ],
   exports: [TYPES.EventRepository, TYPES.UserRepository, TYPES.EventEditedRepository],
 })

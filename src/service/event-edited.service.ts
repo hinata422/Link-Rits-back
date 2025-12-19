@@ -13,4 +13,9 @@ export class EventEditedService {
     async getByEventId(eventId: string) {
         return await this.eventEditedRepo.findByEventId(eventId);
     }
+
+    // MBTI別イベント情報を保存/更新（RAGバッチ処理で使用）
+    async upsert(data: { events_id: string; mbti_type: string; detail_edited: string }) {
+        return await this.eventEditedRepo.upsert(data);
+    }
 }
