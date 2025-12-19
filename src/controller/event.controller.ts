@@ -24,9 +24,11 @@ export class EventController {
     }
     const events = await this.eventService.list(mbti);
 
-    // ホーム画面では event_id, title, place のみ
+    // ホーム画面では event_id, start_at, end_at, title, place
     return events.map((event: any) => ({
       event_id: event.id,
+      start_at: event.start_at,
+      end_at: event.end_at,
       title: event.title,
       place: event.place,
     }));
@@ -57,6 +59,8 @@ export class EventController {
 
     return {
       event_mbti_id: eventMbtiId,
+      start_at: event.start_at,
+      end_at: event.end_at,
       title: event.title,
       place: event.place,
       detail_edited: detailEdited,

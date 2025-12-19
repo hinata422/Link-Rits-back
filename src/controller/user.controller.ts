@@ -35,15 +35,12 @@ export class UserController {
   async get(@Param('link_user_code') linkUserCode: string) {
     const user = await this.userService.get(linkUserCode);
     if (!user) {
-      return {
-        exists: false,
-        mbtiRegistered: false,
-      };
+      return null;
     }
     return {
-      exists: true,
-      mbtiRegistered: !!user.mbti_type,  // snake_caseに対応
-      user,
+      link_user_code: user.link_user_code,
+      name: user.name,
+      mbti_type: user.mbti_type,
     };
   }
 
