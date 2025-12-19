@@ -14,26 +14,58 @@ datasource db {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
-  auth0Id      String   @unique // link_user_code (Auth0のsub)
-  name         String?  // ユーザー名 (nullable)
-  mbtiType     String?  // enum; MBTI (nullable)
-  gender       String?  // enum; 性別 (nullable)
-  age          Int?     // age; int (nullable)
-  faculty      String?  // faculity; enum (nullable)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  uid          String  @id @default(uuid()) @db.Uuid
+  linkUserCode String  @unique @map("link_user_code") @db.VarChar(255)
+  name         String  @db.VarChar(36) // display_name から name に変更
+  mbtiType     String? @map("mbti_type") @db.VarChar(10) // 任意(NULL)
+
+  // リレーション（つながり）
+  eventPosts   EventPost[]
+
+  @@map("users")
 }
 
+// イベント原本
 model Event {
-  id          Int      @id @default(autoincrement())
-  title       String
-  description String?
-  date        DateTime
-  location    String?
-  thumbnail   String?
-  sourceUrl   String
-  tags        String[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id     String @id @default(uuid()) @db.Uuid
+  title  String @db.VarChar(256)
+  place  String @db.VarChar(256)
+  detail String @db.Text
+  // category は削除されました
+
+  // リレーション
+  posts        EventPost[]
+  editedEvents EventEdited[]
+
+  @@map("events")
+}
+
+// 投稿管理
+model EventPost {
+  id        String   @id @default(uuid()) @db.Uuid
+  uid       String   @db.Uuid
+  eventId   String   @map("event_id") @db.Uuid
+  postTime  DateTime @default(now()) @map("post_time")
+  postLimit DateTime @map("post_limit")
+
+  // リンク設定
+  user      User     @relation(fields: [uid], references: [uid], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("event_posts")
+}
+
+// MBTI別加工データ
+model EventEdited {
+  id           String @id @default(uuid()) @db.Uuid
+  eventsId     String @map("events_id") @db.Uuid
+  mbtiType     String @map("mbti_type") @db.VarChar(36)
+  detailEdited String @map("detail_edited") @db.Text
+
+  // リンク設定
+  event        Event  @relation(fields: [eventsId], references: [id], onDelete: Cascade)
+
+  // ユニーク制約 (同じイベント×同じMBTIは1つだけ)
+  @@unique([eventsId, mbtiType])
+  @@map("events_edited")
 }
