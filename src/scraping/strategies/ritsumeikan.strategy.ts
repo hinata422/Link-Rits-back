@@ -15,20 +15,20 @@ export class RitsumeikanStrategy implements IScraperStrategy {
   }
 
   async scrape(url: string): Promise<CreateEventPostDto[]> {
-    this.logger.log(`Start scraping list page: ${url}`);
+    this.logger.log(`🚀 Start scraping list page: ${url}`);
 
     try {
-      // Step 1: 一覧ページから詳細ページのURLを収集する
       const { data } = await axios.get<string>(url, {
         headers: {
           'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         },
       });
 
       const $ = cheerio.load(data);
       const candidateUrls = new Set<string>();
 
+      // URL収集
       $('a').each((_index, element) => {
         const link = $(element).attr('href');
         const title = $(element).text().trim();
@@ -46,65 +46,78 @@ export class RitsumeikanStrategy implements IScraperStrategy {
           '講義・講座',
           'すべての',
           'キャンパス',
+          'お問合せ',
+          'アクセス',
+          'EVENTS',
         ];
         if (ignoreWords.some((word) => title.includes(word))) return;
+
         if (
           link.includes('tag=') ||
           link.includes('year=') ||
           link.includes('cat=') ||
           link.endsWith('.pdf')
-        )
-          return;
-
-        // 詳細ページっぽいURLのみ
-        if (
-          link.includes('event') ||
-          link.includes('news') ||
-          link.includes('article')
         ) {
-          const fullLink = link.startsWith('http')
+          return;
+        }
+
+        // 詳細ページと思われるURLのみ収集
+        if (link.match(/(event|news|article|detail)/i)) {
+          let fullLink = link.startsWith('http')
             ? link
             : link.startsWith('/')
               ? `https://www.ritsumei.ac.jp${link}`
               : `https://www.ritsumei.ac.jp/${link}`;
+
+          // 二重スラッシュの修正 (http://...//... となるのを防ぐ)
+          fullLink = fullLink.replace(/([^:]\/)\/+/g, '$1');
+
+          // 自分自身（一覧ページ）は除外
+          if (
+            fullLink === url ||
+            fullLink === 'https://www.ritsumei.ac.jp/events/'
+          ) {
+            return;
+          }
+
           candidateUrls.add(fullLink);
         }
       });
 
       const uniqueUrls = Array.from(candidateUrls);
       this.logger.log(
-        `Found ${uniqueUrls.length} candidate URLs. Starting detail scraping...`,
+        `📋 Found ${uniqueUrls.length} candidate URLs. Starting detail crawling...`,
       );
 
-      // Step 2: 各詳細ページにアクセスして情報を取得 (サーバー負荷軽減のため直列実行)
       const events: CreateEventPostDto[] = [];
+      // 負荷対策: 最新15件
+      const targetUrls = uniqueUrls.slice(0, 15);
 
-      // テスト用に最大10件程度に制限しても良いですが、ここでは全件回します
-      for (const detailUrl of uniqueUrls) {
+      for (const detailUrl of targetUrls) {
         try {
-          // 少し待機（マナーとして）
           await new Promise((resolve) => setTimeout(resolve, 1000));
-
           const eventData = await this.scrapeDetail(detailUrl);
           if (eventData) {
             events.push(eventData);
+            this.logger.log(`✅ Scraped: ${eventData.title}`);
           }
-        } catch (e) {
-          this.logger.warn(`Failed to scrape detail: ${detailUrl} - ${e}`);
+        } catch (error) {
+          this.logger.warn(
+            `⚠️ Failed to scrape detail: ${detailUrl} - ${error}`,
+          );
         }
       }
 
-      this.logger.log(`Successfully scraped ${events.length} events.`);
+      this.logger.log(`🎉 Successfully scraped ${events.length} events.`);
       return events;
     } catch (error) {
       this.logger.error(
-        `Scraping failed: ${error instanceof Error ? error.message : error}`,
+        `❌ Scraping failed: ${error instanceof Error ? error.message : error}`,
       );
       throw error;
     }
   }
 
-  // 詳細ページを解析する関数
   private async scrapeDetail(url: string): Promise<CreateEventPostDto | null> {
     const { data } = await axios.get<string>(url, {
       headers: {
@@ -113,31 +126,50 @@ export class RitsumeikanStrategy implements IScraperStrategy {
     });
     const $ = cheerio.load(data);
 
-    // タイトルの取得 (h1やtitleタグから)
-    const title =
-      $('h1').text().trim() ||
-      $('title').text().replace(' | 立命館大学', '').trim();
+    // ▼▼▼ クリーニング処理 ▼▼▼
+    $('script, style, iframe, noscript, header, footer, nav').remove();
+
+    let title = $('h1').first().text().trim();
+    if (!title) {
+      title = $('title').text().split('|')[0].trim();
+    }
     if (!title) return null;
 
-    // 本文の取得
-    const bodyText = $('body').text().replace(/\s+/g, ' '); // 改行などをスペースに置換して検索しやすくする
+    // 本文取得 (余分な空白を除去)
+    const bodyText = $('body').text().replace(/\s+/g, ' ').trim();
 
-    // 日付の抽出 (強力な正規表現)
-    // パターン: 2025年12月20日, 2025/12/20, 12月20日
-    const dateMatch = bodyText.match(
-      /(\d{4}年\d{1,2}月\d{1,2}日)|(\d{4}[./-]\d{1,2}[./-]\d{1,2})/,
-    );
+    // 日付抽出
+    const dateRegex = /(\d{4})[\s./-年](\d{1,2})[\s./-月](\d{1,2})/;
+    const dateMatch = bodyText.match(dateRegex);
+
     let eventDate = new Date();
-    let dateStr = '不明';
+    let dateStr = '日時情報なし';
 
     if (dateMatch) {
       dateStr = dateMatch[0];
-      // 年月日を解析
-      const dateString = dateStr.replace(/年|月/g, '/').replace(/日/g, '');
-      const parsedDate = new Date(dateString);
+      const year = parseInt(dateMatch[1]);
+      const month = parseInt(dateMatch[2]) - 1;
+      const day = parseInt(dateMatch[3]);
+
+      const parsedDate = new Date(year, month, day);
       if (!isNaN(parsedDate.getTime())) {
         eventDate = parsedDate;
       }
+    }
+
+    // 場所抽出
+    let place = '立命館大学';
+    if (bodyText.includes('大阪いばらき') || bodyText.includes('OIC')) {
+      place = '大阪いばらきキャンパス (OIC)';
+    }
+    if (bodyText.includes('衣笠')) {
+      place = '衣笠キャンパス';
+    }
+    if (bodyText.includes('びわこ・くさつ') || bodyText.includes('BKC')) {
+      place = 'びわこ・くさつキャンパス (BKC)';
+    }
+    if (bodyText.includes('朱雀')) {
+      place = '朱雀キャンパス';
     }
 
     return {
@@ -149,8 +181,11 @@ export class RitsumeikanStrategy implements IScraperStrategy {
       postLimit: new Date(
         new Date(eventDate).setDate(eventDate.getDate() + 30),
       ),
-      place: '立命館大学',
-      detail: `【詳細情報】\n📅 開催日: ${dateStr}\n🔗 元記事: ${url}\n\n${bodyText.substring(0, 200)}...`, // 本文の冒頭を少し入れる
+      place: place,
+      detail: `【詳細情報】\n📅 日時: ${dateStr}\n🔗 元記事: ${url}\n\n${bodyText.substring(
+        0,
+        300,
+      )}...`,
       chatRoomId: uuidv4(),
     };
   }
