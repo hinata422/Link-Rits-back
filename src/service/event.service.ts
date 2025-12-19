@@ -8,11 +8,13 @@ export class EventService {
     @Inject(TYPES.EventRepository)
     private readonly eventRepo: EventRepository,
   ) {}
-  async getAll() {
-    return await this.eventRepo.findAll();
+ // MBTI別イベント一覧取得
+  async list(mbtiType: string) {
+    return await this.eventRepo.findByMBTI(mbtiType);
   }
 
-  async get(event_id: number) {
-    return await this.eventRepo.findById(event_id);
+  // イベント取得
+  async get(id: string) {
+    return await this.eventRepo.findById(id);
   }
 }

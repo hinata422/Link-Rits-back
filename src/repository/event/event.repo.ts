@@ -1,5 +1,7 @@
-export  interface EventRepository  {
-  bulkInsert(events: any[]): Promise<void>;
+export interface EventRepository {
+  // MVP用の基本機能のみ
   findAll(): Promise<any[]>;
-  findById(event_id: number): Promise<any>;
+  findById(id: string): Promise<any | null>;
+  findByMBTI(mbtiType: string): Promise<any[]>;
+  bulkInsert(events: any[]): Promise<void>;
 }

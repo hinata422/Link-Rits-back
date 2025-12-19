@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { UserRepository } from '../user.repo';
 
-
 @Injectable()
 export class UserRepositoryImpl implements UserRepository {
   private readonly client: SupabaseClient;
@@ -10,20 +9,9 @@ export class UserRepositoryImpl implements UserRepository {
     this.client = supabaseClient;
   }
 
-  async findByAuth0Id(id: string) {
-    const { data, error } = await this.client
-      .from('users')
-      .select('*')
-      .eq('auth0Id', id)
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
   async create(user: any) {
     const { data, error } = await this.client
-      .from('users')
+      .from('User')
       .insert(user)
       .select()
       .single();
@@ -32,11 +20,22 @@ export class UserRepositoryImpl implements UserRepository {
     return data;
   }
 
-  async update(sub: string, user: any) {
+  async findByAuth0Id(auth0Id: string) {
     const { data, error } = await this.client
-      .from('users')
-      .update(user)
-      .eq('auth0Id', sub)
+      .from('User')
+      .select('*')
+      .eq('auth0Id', auth0Id)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async update(auth0Id: string, userData: any) {
+    const { data, error } = await this.client
+      .from('User')
+      .update(userData)
+      .eq('auth0Id', auth0Id)
       .select()
       .single();
 

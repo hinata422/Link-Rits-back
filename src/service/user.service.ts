@@ -9,20 +9,17 @@ export class UserService {
     private readonly userRepo: UserRepository,
   ) {}
 
-  // 初回ログイン判定API
-  async check(auth0Id: string): Promise<boolean> {
-    const user = await this.userRepo.findByAuth0Id(auth0Id);
-    return !!user;
-  }
-
+  // ユーザー新規登録
   async create(data: any) {
     return await this.userRepo.create(data);
   }
 
+  // ユーザー情報取得
   async get(auth0Id: string) {
     return await this.userRepo.findByAuth0Id(auth0Id);
   }
 
+  // ユーザー情報更新
   async update(auth0Id: string, data: any) {
     return await this.userRepo.update(auth0Id, data);
   }
