@@ -9,8 +9,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // アプリ用（Pooler経由）
+  directUrl = env("DIRECT_URL")   // マイグレーション用（直接接続）
 }
 
 model User {
