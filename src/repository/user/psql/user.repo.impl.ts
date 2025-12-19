@@ -11,7 +11,7 @@ export class UserRepositoryImpl implements UserRepository {
 
   async create(user: any) {
     const { data, error } = await this.client
-      .from('User')
+      .from('users')
       .insert(user)
       .select()
       .single();
@@ -20,22 +20,22 @@ export class UserRepositoryImpl implements UserRepository {
     return data;
   }
 
-  async findByAuth0Id(auth0Id: string) {
+  async findByAuth0Id(linkUserCode: string) {
     const { data, error } = await this.client
-      .from('User')
+      .from('users')
       .select('*')
-      .eq('auth0Id', auth0Id)
+      .eq('link_user_code', linkUserCode)
       .maybeSingle();
 
     if (error) throw error;
     return data;
   }
 
-  async update(auth0Id: string, userData: any) {
+  async update(linkUserCode: string, userData: any) {
     const { data, error } = await this.client
-      .from('User')
+      .from('users')
       .update(userData)
-      .eq('auth0Id', auth0Id)
+      .eq('link_user_code', linkUserCode)
       .select()
       .single();
 

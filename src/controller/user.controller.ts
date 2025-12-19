@@ -16,11 +16,11 @@ export class UserController {
     name: string;
     mbti_type?: string; // enum; MBTI; nullable
   }) {
-    // link_user_code を auth0Id にマッピング
+    // APIのsnake_caseをRepositoryのsnake_caseに変換
     const userData = {
-      auth0Id: body.link_user_code,
+      link_user_code: body.link_user_code,
       name: body.name,
-      mbtiType: body.mbti_type,
+      mbti_type: body.mbti_type,
     };
     return await this.userService.create(userData);
   }
@@ -42,7 +42,7 @@ export class UserController {
     }
     return {
       exists: true,
-      mbtiRegistered: !!user.mbtiType,
+      mbtiRegistered: !!user.mbti_type,  // snake_caseに対応
       user,
     };
   }
@@ -61,9 +61,10 @@ export class UserController {
       mbti_type?: string; // enum; MBTI; nullable
     },
   ) {
+    // APIのsnake_caseをRepositoryのsnake_caseに変換
     const updateData: any = {};
     if (body.name) updateData.name = body.name;
-    if (body.mbti_type) updateData.mbtiType = body.mbti_type;
+    if (body.mbti_type) updateData.mbti_type = body.mbti_type;
 
     return await this.userService.update(linkUserCode, updateData);
   }

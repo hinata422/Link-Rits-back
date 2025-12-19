@@ -11,7 +11,7 @@ export class EventRepositoryImpl implements EventRepository {
 
   async findAll() {
     const { data, error } = await this.client
-      .from('Event')
+      .from('events')
       .select('*')
       .order('date', { ascending: true });
 
@@ -21,7 +21,7 @@ export class EventRepositoryImpl implements EventRepository {
 
   async findById(id: string) {
     const { data, error } = await this.client
-      .from('Event')
+      .from('events')
       .select('*')
       .eq('id', id)
       .maybeSingle();
@@ -34,7 +34,7 @@ export class EventRepositoryImpl implements EventRepository {
     // MVPでは全イベントを返す（後でMBTI別フィルタリングロジックを追加可能）
     // TODO: event_mbti_id テーブルを使った関連付けを実装
     const { data, error } = await this.client
-      .from('Event')
+      .from('events')
       .select('*')
       .order('date', { ascending: true });
 
@@ -44,7 +44,7 @@ export class EventRepositoryImpl implements EventRepository {
 
   async bulkInsert(events: any[]): Promise<void> {
     const { error } = await this.client
-      .from('Event')
+      .from('events')
       .insert(events);
 
     if (error) throw error;
