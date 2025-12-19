@@ -3,7 +3,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
-
+import { EventsModule } from './events/events.module';
+import { ScrapingModule } from './scraping/scraping.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -11,6 +12,8 @@ import { ConfigModule } from '@nestjs/config';
       envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
     }),
     PrismaModule,
+    EventsModule,
+    ScrapingModule,
   ],
   controllers: [AppController],
   providers: [AppService],
