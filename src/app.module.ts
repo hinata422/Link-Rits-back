@@ -17,13 +17,16 @@ import { EventEditedRepositoryImpl } from './repository/event-edited/psql/event-
 
 import { supabaseClient } from './main';
 import { TYPES } from '../common/Types';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { PrismaModule } from './prisma/prisma.module';
+
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      // 必要なら envFilePath を後で追加してOK
-      // envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
+      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
     }),
   ],
   controllers: [
@@ -59,4 +62,5 @@ import { TYPES } from '../common/Types';
     TYPES.EventEditedRepository,
   ],
 })
+export class AppModule {}
 export class AppModule {}
