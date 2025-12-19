@@ -42,7 +42,7 @@ export class EventsService {
               detail: dto.detail,
               scrapedAt: new Date(),
               startAt: dto.postTime, // 開始日時
-              endAt: dto.postLimit,  // 終了日時
+              endAt: dto.postLimit, // 終了日時
               dateText: dto.postTime.toISOString(),
             },
           });
