@@ -1,0 +1,39 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  auth0Id      String   @unique // link_user_code (Auth0のsub)
+  name         String?  // ユーザー名 (nullable)
+  mbtiType     String?  // enum; MBTI (nullable)
+  gender       String?  // enum; 性別 (nullable)
+  age          Int?     // age; int (nullable)
+  faculty      String?  // faculity; enum (nullable)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Event {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  date        DateTime
+  location    String?
+  thumbnail   String?
+  sourceUrl   String
+  tags        String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
