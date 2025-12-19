@@ -1,5 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { createClient } from '@supabase/supabase-js';
+
+export const supabaseClient = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_KEY!,
+);
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
