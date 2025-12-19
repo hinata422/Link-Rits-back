@@ -15,9 +15,10 @@ export class RitsumeikanStrategy implements IScraperStrategy {
   }
 
   async scrape(url: string): Promise<CreateEventPostDto[]> {
-    this.logger.log(`Start scraping: ${url}`);
+    this.logger.log(`Start scraping list page: ${url}`);
 
     try {
+      // Step 1: 一覧ページから詳細ページのURLを収集する
       const { data } = await axios.get<string>(url, {
         headers: {
           'User-Agent':
@@ -26,18 +27,15 @@ export class RitsumeikanStrategy implements IScraperStrategy {
       });
 
       const $ = cheerio.load(data);
-      const events: CreateEventPostDto[] = [];
-      const now = new Date();
+      const candidateUrls = new Set<string>();
 
       $('a').each((_index, element) => {
-        const linkElement = $(element);
-        const title = linkElement.text().trim();
-        const href = linkElement.attr('href');
+        const link = $(element).attr('href');
+        const title = $(element).text().trim();
 
-        // 1. 基本チェック
-        if (!title || title.length < 5 || !href) return;
+        if (!link || !title || title.length < 5) return;
 
-        // 2. 除外キーワード (ここを強化しました！)
+        // 除外フィルタ
         const ignoreWords = [
           '一覧',
           '検索',
@@ -50,85 +48,110 @@ export class RitsumeikanStrategy implements IScraperStrategy {
           'キャンパス',
         ];
         if (ignoreWords.some((word) => title.includes(word))) return;
-
-        // 3. URLチェック (不要なパラメータ付きを除外)
         if (
-          href.includes('tag=') ||
-          href.includes('year=') ||
-          href.includes('cat=') ||
-          href.endsWith('.pdf')
+          link.includes('tag=') ||
+          link.includes('year=') ||
+          link.includes('cat=') ||
+          link.endsWith('.pdf')
         )
           return;
 
-        // イベント詳細っぽいURLだけを通す
+        // 詳細ページっぽいURLのみ
         if (
-          !href.includes('event') &&
-          !href.includes('news') &&
-          !href.includes('detail')
-        )
-          return;
-
-        // URLの補完
-        const fullLink = href.startsWith('http')
-          ? href
-          : href.startsWith('/')
-            ? `https://www.ritsumei.ac.jp${href}`
-            : `https://www.ritsumei.ac.jp/${href}`;
-
-        // 4. 日付抽出の強化
-        // リンクの親要素や、その近くにある日付を探す
-        // パターン: 2024.12.20 や 2024/12/20
-        let dateText = '';
-        const parent = linkElement.parent();
-        const nearbyText =
-          parent.text() + parent.prev().text() + parent.next().text(); // 前後も含めて探す
-
-        const dateMatch = nearbyText.match(
-          /(\d{4})[./-](\d{1,2})[./-](\d{1,2})/,
-        );
-
-        let eventDate = now;
-        if (dateMatch) {
-          dateText = dateMatch[0];
-          eventDate = new Date(
-            parseInt(dateMatch[1]),
-            parseInt(dateMatch[2]) - 1,
-            parseInt(dateMatch[3]),
-          );
-        } else {
-          // 日付が見つからないイベントは信頼性が低いので今回はスキップする（設定による）
-          // 今回は「日付不明」として保存は許可します
+          link.includes('event') ||
+          link.includes('news') ||
+          link.includes('article')
+        ) {
+          const fullLink = link.startsWith('http')
+            ? link
+            : link.startsWith('/')
+              ? `https://www.ritsumei.ac.jp${link}`
+              : `https://www.ritsumei.ac.jp/${link}`;
+          candidateUrls.add(fullLink);
         }
-
-        const eventDto: CreateEventPostDto = {
-          id: uuidv4(),
-          uid: this.SYSTEM_USER_ID,
-          title: title.substring(0, 100),
-          category: 'University Event',
-          postTime: eventDate,
-          postLimit: new Date(
-            new Date(eventDate).setDate(eventDate.getDate() + 30),
-          ),
-          place: '立命館大学 (詳細はリンク参照)',
-          detail: `【イベント検出】\n📅 日付: ${dateText || 'サイトで確認してください'}\n🔗 詳細URL: ${fullLink}`,
-          chatRoomId: uuidv4(),
-        };
-
-        events.push(eventDto);
       });
 
-      // タイトルでの重複排除
-      const uniqueEvents = Array.from(
-        new Map(events.map((e) => [e.title, e])).values(),
+      const uniqueUrls = Array.from(candidateUrls);
+      this.logger.log(
+        `Found ${uniqueUrls.length} candidate URLs. Starting detail scraping...`,
       );
 
-      this.logger.log(`Found ${uniqueEvents.length} valid events.`);
-      return uniqueEvents;
-    } catch (error) {
-      if (error instanceof Error) {
-        this.logger.error(`Scraping failed: ${error.message}`);
+      // Step 2: 各詳細ページにアクセスして情報を取得 (サーバー負荷軽減のため直列実行)
+      const events: CreateEventPostDto[] = [];
+
+      // テスト用に最大10件程度に制限しても良いですが、ここでは全件回します
+      for (const detailUrl of uniqueUrls) {
+        try {
+          // 少し待機（マナーとして）
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          const eventData = await this.scrapeDetail(detailUrl);
+          if (eventData) {
+            events.push(eventData);
+          }
+        } catch (e) {
+          this.logger.warn(`Failed to scrape detail: ${detailUrl} - ${e}`);
+        }
       }
+
+      this.logger.log(`Successfully scraped ${events.length} events.`);
+      return events;
+    } catch (error) {
+      this.logger.error(
+        `Scraping failed: ${error instanceof Error ? error.message : error}`,
+      );
       throw error;
     }
+  }
+
+  // 詳細ページを解析する関数
+  private async scrapeDetail(url: string): Promise<CreateEventPostDto | null> {
+    const { data } = await axios.get<string>(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ...',
+      },
+    });
+    const $ = cheerio.load(data);
+
+    // タイトルの取得 (h1やtitleタグから)
+    const title =
+      $('h1').text().trim() ||
+      $('title').text().replace(' | 立命館大学', '').trim();
+    if (!title) return null;
+
+    // 本文の取得
+    const bodyText = $('body').text().replace(/\s+/g, ' '); // 改行などをスペースに置換して検索しやすくする
+
+    // 日付の抽出 (強力な正規表現)
+    // パターン: 2025年12月20日, 2025/12/20, 12月20日
+    const dateMatch = bodyText.match(
+      /(\d{4}年\d{1,2}月\d{1,2}日)|(\d{4}[./-]\d{1,2}[./-]\d{1,2})/,
+    );
+    let eventDate = new Date();
+    let dateStr = '不明';
+
+    if (dateMatch) {
+      dateStr = dateMatch[0];
+      // 年月日を解析
+      const dateString = dateStr.replace(/年|月/g, '/').replace(/日/g, '');
+      const parsedDate = new Date(dateString);
+      if (!isNaN(parsedDate.getTime())) {
+        eventDate = parsedDate;
+      }
+    }
+
+    return {
+      id: uuidv4(),
+      uid: this.SYSTEM_USER_ID,
+      title: title.substring(0, 100),
+      category: 'University Event',
+      postTime: eventDate,
+      postLimit: new Date(
+        new Date(eventDate).setDate(eventDate.getDate() + 30),
+      ),
+      place: '立命館大学',
+      detail: `【詳細情報】\n📅 開催日: ${dateStr}\n🔗 元記事: ${url}\n\n${bodyText.substring(0, 200)}...`, // 本文の冒頭を少し入れる
+      chatRoomId: uuidv4(),
+    };
   }
 }
