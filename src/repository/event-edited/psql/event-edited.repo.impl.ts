@@ -9,28 +9,6 @@ export class EventEditedRepositoryImpl implements EventEditedRepository {
         this.client = supabaseClient;
     }
 
-    async create(eventEdited: any) {
-        const { data, error } = await this.client
-            .from('events_edited')
-            .insert(eventEdited)
-            .select()
-            .single();
-
-        if (error) throw error;
-        return data;
-    }
-
-    async findById(id: string) {
-        const { data, error } = await this.client
-            .from('events_edited')
-            .select('*')
-            .eq('id', id)
-            .maybeSingle();
-
-        if (error) throw error;
-        return data;
-    }
-
     async findByEventId(eventId: string) {
         const { data, error } = await this.client
             .from('events_edited')
@@ -39,36 +17,5 @@ export class EventEditedRepositoryImpl implements EventEditedRepository {
 
         if (error) throw error;
         return data || [];
-    }
-
-    async findByMbtiType(mbtiType: string) {
-        const { data, error } = await this.client
-            .from('events_edited')
-            .select('*')
-            .eq('mbti_type', mbtiType);
-
-        if (error) throw error;
-        return data || [];
-    }
-
-    async update(id: string, updateData: any) {
-        const { data, error } = await this.client
-            .from('events_edited')
-            .update(updateData)
-            .eq('id', id)
-            .select()
-            .single();
-
-        if (error) throw error;
-        return data;
-    }
-
-    async delete(id: string): Promise<void> {
-        const { error } = await this.client
-            .from('events_edited')
-            .delete()
-            .eq('id', id);
-
-        if (error) throw error;
     }
 }
