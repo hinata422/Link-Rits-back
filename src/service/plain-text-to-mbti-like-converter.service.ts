@@ -1,2 +1,1 @@
-export class PlainTextToMbtiLikeConverter {
-}
+export class PlainTextToMbtiLikeConverter {}
