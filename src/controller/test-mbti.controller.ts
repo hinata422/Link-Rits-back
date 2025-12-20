@@ -3,6 +3,7 @@ import { PlainTextToMbtiLikeConverter } from '../service/plain-text-to-mbti-like
 import { EventEditedService } from '../service/event-edited.service';
 import { EventService } from '../service/event.service';
 import { MBTIType } from '../../lib/mbti/mbti-profiles';
+import { randomUUID } from 'crypto';
 
 @Controller('api/test-mbti')
 export class TestMbtiController {
@@ -36,10 +37,11 @@ export class TestMbtiController {
             const saved = [];
             for (const [mbtiType, detailEdited] of Object.entries(mbtiDescriptions)) {
                 await this.eventEditedService.upsert({
+                    id: randomUUID(), // UUIDを自動生成
                     event_id: eventId,
                     mbti_type: mbtiType as MBTIType,
                     detail_edited: detailEdited,
-                });
+                } as any);
                 saved.push(mbtiType);
                 console.log(`💾 保存完了: ${mbtiType}`);
             }
