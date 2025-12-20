@@ -2,6 +2,10 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
+import { PrismaModule } from './prisma/prisma.module';
+import { EventsModule } from './events/events.module';
+import { ScrapingModule } from './scraping/scraping.module';
+
 import { UserController } from './controller/user.controller';
 import { EventController } from './controller/event.controller';
 import { EventEditedController } from './controller/event-edited.controller';
@@ -18,13 +22,15 @@ import { EventEditedRepositoryImpl } from './repository/event-edited/psql/event-
 
 import { TYPES } from '../common/Types';
 
-
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
     }),
+    PrismaModule,
+    EventsModule,
+    ScrapingModule,
   ],
   controllers: [
     UserController,
